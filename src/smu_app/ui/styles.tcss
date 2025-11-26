@@ -1,0 +1,82 @@
+/* General Layout */
+Screen {
+    layers: base notification;
+}
+
+/* --- Connection Screen --- */
+ConnectionScreen {
+    align: center middle;
+    background: $surface;
+}
+
+#connect-dialog {
+    width: 60;
+    height: auto;
+    border: thick $primary;
+    background: $panel;
+    padding: 1 2;
+}
+
+#port-list {
+    height: 10;
+    border: solid $secondary;
+    margin-bottom: 1;
+}
+
+.port-item {
+    padding: 1;
+}
+
+#scan-label {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+/* --- Dashboard Screen --- */
+DashboardScreen {
+    layout: vertical;
+}
+
+#log-area {
+    height: 1fr;
+    border: solid $secondary;
+    background: $surface;
+}
+
+#readout-bar {
+    height: 3;
+    layout: horizontal;
+    background: $boost; 
+    margin: 0 0;
+    padding: 0 1;
+}
+
+.readout {
+    width: 1fr;
+    /* FIX: Force widget to fill the parent's height so content-align works vertically */
+    height: 100%; 
+    content-align: center middle;
+    text-style: bold;
+}
+
+#input-bar {
+    border-top: solid $secondary;
+    height: auto;
+}
+
+/* --- Disconnect Modal --- */
+DisconnectModal {
+    align: center middle;
+    background: 80% #000; 
+}
+
+#alert-box {
+    width: 60;
+    height: auto;
+    background: $error;
+    color: #ffffff;
+    border: thick #ffffff;
+    padding: 2;
+    text-align: center;
+}
