@@ -8,9 +8,8 @@ import shlex
 import atexit
 import datetime
 import random
-from src.smulib.logging import SMULogger
 from serial.tools import list_ports
-from smulib import SMU
+from smulib import SMU, SMULogger
 from prompt_toolkit.application import Application
 from prompt_toolkit.document import Document
 from prompt_toolkit.key_binding import KeyBindings
@@ -184,7 +183,7 @@ def log_output(message: str):
         command_output_log.pop(0)
 
 # --- Updater Thread ---
-def status_updater(app: Application, frequency: float):
+def status_updater(app: Application, frequency: float, log_display: TextArea):
     """
     A thread function that periodically requests the SMU status and
     invalidates the application UI (forces a redraw).
@@ -196,17 +195,20 @@ def status_updater(app: Application, frequency: float):
             time.sleep(0.5)
             continue
 
-        try:
-            # Acquire the lock to communicate safely with the SMU
-            with smu_lock:
-                # logger.debug_logger.debug(latest_current)
-                latest_voltage = smu_instance.measure_voltage()
-                # logger.debug_logger.debug(latest_current)
-                latest_current = smu_instance.measure_current()
-                # We are now trying the :OUTP? command
-                # latest_output_state = smu_instance.get_output_state() 
-                smu_error = None
+        # --- NEW CODE BLOCK: Update Log Display ---
+        # We update the text area here so the cursor position moves to the end
+        new_text = "\n".join(command_output_log[-50:])
+        if log_display.text != new_text:
+            log_display.text = new_text
+            # Move cursor to the end of the buffer to force auto-scrolling
+            log_display.buffer.cursor_position = len(log_display.text)
+        # ------------------------------------------
 
+        try:
+            with smu_lock:
+                latest_voltage = smu_instance.measure_voltage()
+                latest_current = smu_instance.measure_current()
+                smu_error = None
         except (ValueError, TypeError) as e:
             smu_error = f"DATA ERROR: Could not parse response. {e}"
         except Exception as e:
@@ -217,9 +219,7 @@ def status_updater(app: Application, frequency: float):
         if not running:
             break
 
-        # Invalidate the application to force the UI to update itself
         app.invalidate()
-        
         time.sleep(frequency)
 
 def process_command(cmd_str: str):
@@ -415,13 +415,6 @@ def run_tui_app():
             app.exit() # Stop the application
         return False
     
-        # --- Command Output Window (middle) ---
-    def get_output_text() -> FormattedText:
-        """Show the last lines of the log."""
-        # Show only the last 50 lines to keep the window fast
-        display_lines = command_output_log[-50:]
-        return FormattedText([('', "\n".join(display_lines))])
-    
     info_bar = Window(
         content=FormattedTextControl(FormattedText([
             ("", f"SMU CLI "),
@@ -432,10 +425,12 @@ def run_tui_app():
         height=2
     )
 
-    output_window = Window(
-        content=FormattedTextControl(get_output_text),
+    output_window = TextArea(
+        text="",
+        read_only=True,
+        scrollbar=True,
+        focusable=False,
         wrap_lines=True,
-        scroll_offsets= ScrollOffsets(bottom=1), # Keep scrolling down,
     )
 
     def get_voltage_text() -> FormattedText:
@@ -519,7 +514,7 @@ def run_tui_app():
         mouse_support=True        
     )
 
-    updater = threading.Thread(target=status_updater, args=(app, 0.1), daemon=True)
+    updater = threading.Thread(target=status_updater, args=(app, 0.1, output_window), daemon=True)
     updater.start()
 
     app.run()
