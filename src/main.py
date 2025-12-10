@@ -10,9 +10,9 @@ from prompt_toolkit.layout import Layout
 from prompt_toolkit.widgets import Dialog, Label
 from prompt_toolkit.styles import Style
 
+from smulib import SMU
+from smulib.logging import SMULogger
 from smu_app.core.state import AppState
-from smu_app.hardware.driver import SMU
-from smu_app.logging.recorder import SMULogger
 from smu_app.ui.selector import DynamicPortSelector
 from smu_app.ui.main_window import run_main_tui, EXIT_CRITICAL_DISCONNECT
 
@@ -97,7 +97,7 @@ def main():
             state.smu = SMU(port=port)
             state.connection_status = "Connected"
             logger.set_logging_parameters(smu=state.smu)
-            state.log_message(f"Connected to {port}")
+            state.log_message_to_state_history(f"Connected to {port}")
 
         except Exception as e:
             print(f"Failed: {e}")

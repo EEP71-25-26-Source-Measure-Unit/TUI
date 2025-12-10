@@ -83,15 +83,18 @@ def run_main_tui(app_state: AppState) -> int:
     # --- Background Updater Thread ---
     def worker():
         while app_state.running:
-            # Sync Log Buffer to UI
-            # We copy the list under lock to avoid modification during iteration issues
-            with app_state.lock:
-                logs = list(app_state.command_log)
-            
-            new_text = "\n".join(logs)
-            if log_area.text != new_text:
-                log_area.text = new_text
-                log_area.buffer.cursor_position = len(new_text) # Auto-scroll
+            def update_log_area_text():
+                # Sync Log Buffer to UI
+                # We copy the list under lock to avoid modification during iteration issues
+                with app_state.lock:
+                    logs = list(app_state.command_log)
+                
+                new_text = "\n".join(logs)
+                if log_area.text != new_text:
+                    log_area.text = new_text
+                    log_area.buffer.cursor_position = len(new_text) # Auto-scroll
+
+            update_log_area_text()
 
             # Hardware Polling
             if app_state.smu:
@@ -103,15 +106,15 @@ def run_main_tui(app_state: AppState) -> int:
                         app_state.latest_current = i
                         app_state.connection_status = "Connected"
                 except Exception as e:
-                    app_state.log_message(f"Disconnect: {e}")
+                    app_state.log_message_to_state_history(f"Disconnect: error while reading voltage or current")
                     with app_state.lock: app_state.connection_status = "Reconnecting..."
+                    update_log_area_text()
                     app.invalidate()
-                    
+
                     try:
                         app_state.smu.reconnect()
-                        app_state.log_message("Reconnected!")
+                        app_state.log_message_to_state_history("Reconnected!")
                     except:
-                        # Critical failure
                         app.exit(EXIT_CRITICAL_DISCONNECT)
                         return
 

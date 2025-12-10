@@ -74,19 +74,19 @@ class DynamicPortSelector:
                     label_text = "Select Device:"
 
                 # Update only if changed
-                if new_vals != last_ports:
-                    self.radio_list.values = new_vals
-                    
-                    # Auto-select the first real option if available
-                    if raw and (self.radio_list.current_value == 'scanning' or self.radio_list.current_value == 'none'):
-                         self.radio_list.current_value = new_vals[0][0]
-                    
-                    self.label.text = label_text
-                    last_ports = new_vals
-                    self.app.invalidate()
-            except Exception: 
-                pass
-            time.sleep(1.0)
+                if new_vals == last_ports: continue
+                self.radio_list.values = new_vals
+                
+                # Auto-select the first real option if available
+                if raw and (self.radio_list.current_value == 'scanning' or self.radio_list.current_value == 'none'):
+                        self.radio_list.current_value = new_vals[0][0]
+                
+                self.label.text = label_text
+                last_ports = new_vals
+                self.app.invalidate()
+            except Exception as e: 
+                print(e) # actually log this somewhere
+            time.sleep(0.5)
 
     def run(self):
         t = threading.Thread(target=self._update_loop, daemon=True)
