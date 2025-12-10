@@ -2,8 +2,6 @@ import shlex
 from .state import AppState
 
 HELP_TEXT = """Commands:
-on, enable              Enable output
-off, disable            Disable output
 vmode <V>               Set voltage (e.g.: vmode 5.0)
 cmode <I>               Set current (e.g.: cmode 0.05)
 logdata <on|off>        Enable/Disable CSV logging
@@ -45,19 +43,19 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
                 app_state.command_log.clear()
 
         elif cmd == "vmode":
-            if len(args) < 2: app_state.log_message_to_state_history("Usage: vmode <voltage>")
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: vmode <voltage>")
             else:
                 app_state.smu.set_voltage(float(args[1]))
                 app_state.log_message_to_state_history(f"Set Voltage: {args[1]} V")
 
         elif cmd == "cmode":
-            if len(args) < 2: app_state.log_message_to_state_history("Usage: cmode <current>")
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: cmode <current>")
             else:
                 app_state.smu.set_current(float(args[1]))
                 app_state.log_message_to_state_history(f"Set Current: {args[1]} A")
 
         elif cmd == "logdata":
-            if len(args) < 2: app_state.log_message_to_state_history("Usage: logdata <on|off>")
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: logdata <on|off>")
             elif args[1].lower() == "on":
                 if app_state.logger: app_state.logger.start_data_logging()
             elif args[1].lower() == "off":
