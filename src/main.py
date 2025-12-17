@@ -12,9 +12,9 @@ from prompt_toolkit.styles import Style
 
 from smulib import SMU
 from smulib.logging import SMULogger
-from smu_app.core.state import AppState
-from smu_app.ui.selector import DynamicPortSelector
-from smu_app.ui.main_window import run_main_tui, EXIT_CRITICAL_DISCONNECT
+from tui_app.core.state import AppState
+from tui_app.ui.selector import DynamicPortSelector
+from tui_app.ui.main_window import run_main_tui, EXIT_CRITICAL_DISCONNECT
 
 def show_disconnect_alert(port_name: str):
     """

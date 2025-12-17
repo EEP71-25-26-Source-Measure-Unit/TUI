@@ -1,13 +1,20 @@
 import shlex
 from .state import AppState
 
-HELP_TEXT = """Commands:
-vmode <V>               Set voltage (e.g.: vmode 5.0)
-cmode <I>               Set current (e.g.: cmode 0.05)
-logdata <on|off>        Enable/Disable CSV logging
+HELP_TEXT = """
+logdata [on|off]        Enable/Disable CSV logging
+vlimit [V]              Set voltage (e.g.: vlimit 5.0)
+climit [mA]             Set current (e.g.: climit 75)
 mode?                   Get limits
-exit, quit              Exit
+
+clear, cls              Clear the terminal screen
+help, h, ?              Show this message
+
+exit, quit, q           Exit
 """
+
+UNKNOWN_COMMAND_MESSAGE = f"Unknown command:"
+UNKNOWN_COMMAND_HELP_MESSAGE = f"Type 'help' for a list of available commands."
 
 def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
     """
@@ -24,7 +31,9 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
         return
     
     if not args:
-        app_state.log_message_to_state_history(f"Unknown command: '' type 'help' for a list of commands.")
+        app_state.log_message_to_state_history(f">")
+        app_state.log_message_to_state_history(f"{UNKNOWN_COMMAND_MESSAGE} ' '")
+        app_state.log_message_to_state_history(UNKNOWN_COMMAND_HELP_MESSAGE)
         return
     
     app_state.log_message_to_state_history(f"> {cmd_str}")
@@ -42,17 +51,17 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
             with app_state.lock:
                 app_state.command_log.clear()
 
-        elif cmd == "vmode":
-            if len(args) != 2: app_state.log_message_to_state_history("Usage: vmode <voltage>")
+        elif cmd == "vlimit":
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: vlimit <voltage>")
             else:
                 app_state.smu.set_voltage(float(args[1]))
                 app_state.log_message_to_state_history(f"Set Voltage: {args[1]} V")
 
-        elif cmd == "cmode":
-            if len(args) != 2: app_state.log_message_to_state_history("Usage: cmode <current>")
+        elif cmd == "climit":
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: climit <current>")
             else:
                 app_state.smu.set_current(float(args[1]))
-                app_state.log_message_to_state_history(f"Set Current: {args[1]} A")
+                app_state.log_message_to_state_history(f"Set Current: {args[1]} mA")
 
         elif cmd == "logdata":
             if len(args) != 2: app_state.log_message_to_state_history("Usage: logdata <on|off>")
@@ -64,10 +73,12 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
         elif cmd == "mode?":
             v_lim = app_state.smu.voltage_limit()
             i_lim = app_state.smu.current_limit()
-            app_state.log_message_to_state_history(f"Limits -> V: {v_lim} V, I: {i_lim} A")
+            app_state.log_message_to_state_history(f"Limits -> {v_lim} V, {i_lim} mA")
             
         else:
-            app_state.log_message_to_state_history(f"Unknown command: '{cmd}' type 'help' for a list of commands.")
+            # app_state.log_message_to_state_history(f"Unknown command: '{cmd}' \nType 'help' for a list of available commands.")
+            app_state.log_message_to_state_history(f"{UNKNOWN_COMMAND_MESSAGE} '{cmd}'")
+            app_state.log_message_to_state_history(UNKNOWN_COMMAND_HELP_MESSAGE)
 
     except Exception as e:
         app_state.log_message_to_state_history(f"Execution Error: {e}")

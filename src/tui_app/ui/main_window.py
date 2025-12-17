@@ -2,8 +2,8 @@ import threading
 import time
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout import Layout, HSplit, VSplit, Window
-from prompt_toolkit.widgets import HorizontalLine, TextArea
+from prompt_toolkit.layout import Layout, HSplit, VSplit, Window, WindowAlign
+from prompt_toolkit.widgets import HorizontalLine, TextArea, VerticalLine
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
 
@@ -42,17 +42,27 @@ def run_main_tui(app_state: AppState) -> int:
     log_area = TextArea(text="", read_only=True, scrollbar=True, focusable=False)
 
     # 3. Measurements
-    def get_meas_text():
+    def get_measure_text():
         with app_state.lock:
             v = app_state.latest_voltage
             i = app_state.latest_current
         return FormattedText([
-            ('bg:#ansiwhite #000000', f' V: {v:8.3f} V '),
-            ('', '  '),
-            ('bg:#ansiwhite #000000', f' I: {i:8.4f} A ')
+            ('bg:#ansiwhite #000000', ' Measure: '),
+            ('bg:#ansiwhite #000000', f'{v:8.4f} V'),
+            ('', '    '),
+            ('bg:#ansiwhite #000000', f'{(i*1000):8.3f} mA')
         ])
     
-    readout = Window(content=FormattedTextControl(get_meas_text), height=1, style='bg:#ansiwhite #000000')
+    def get_source_text():
+        with app_state.lock:
+            v = app_state.latest_voltage
+        return FormattedText([
+            ('bg:#ansiwhite #000000', ' Source: '),
+            ('bg:#ansiwhite #000000', f'{v:8.4f} V ')
+        ])
+    
+    readout = Window(content=FormattedTextControl(get_measure_text), height=1, style='bg:#ansiwhite #000000', align=WindowAlign("LEFT"))
+    source = Window(content=FormattedTextControl(get_source_text), height=1, style='bg:#ansiwhite #000000', align=WindowAlign("LEFT"))
 
     # 4. Input
     def on_enter(buff):
@@ -61,13 +71,29 @@ def run_main_tui(app_state: AppState) -> int:
         
     input_field = TextArea(height=1, prompt="> ", multiline=False, accept_handler=on_enter)
 
+    vertical_bar = Window(
+        content=FormattedTextControl(FormattedText([
+            ('bg:#ansiwhite #000000', '|'),
+        ])),
+        height=1,
+        width=1,
+        style = 'bg:#ansiwhite #000000',
+        align= WindowAlign("CENTER")
+    )
+
+    readout_source_values_container = VSplit(([
+        readout,
+        vertical_bar,
+        source
+    ]))
+
     # --- Layout ---
     root = HSplit([
         info_bar,
         HorizontalLine(),
         log_area,
         HorizontalLine(),
-        readout,
+        readout_source_values_container,
         HorizontalLine(),
         input_field
     ])

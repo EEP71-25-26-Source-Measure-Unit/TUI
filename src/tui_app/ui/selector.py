@@ -17,13 +17,15 @@ class DynamicPortSelector:
         # FIX: Initialize with a placeholder value to prevent AssertionError
         self.radio_list = RadioList(values=[('scanning', 'Scanning for devices...')])
         self.label = Label(text="Scanning...")
-        
+
+        self.connect_button = Button("Connect", handler=self._accept)
+        self.exit_button = Button("Exit", handler=self._cancel)
         root = Dialog(
             title=title,
             body=HSplit([self.label, self.radio_list]),
             buttons=[
-                Button("Connect", handler=self._accept),
-                Button("Exit", handler=self._cancel)
+                self.connect_button,
+                self.exit_button
             ],
             width=60
         )
@@ -34,7 +36,7 @@ class DynamicPortSelector:
             self._cancel()
 
         self.app = Application(
-            layout=Layout(root),
+            layout=Layout(root, focused_element=self.connect_button),
             key_bindings=kb,
             full_screen=True,
             mouse_support=True,
