@@ -2,7 +2,7 @@ import threading
 import time
 from prompt_toolkit.application import Application
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout import Layout, HSplit, VSplit, Window, WindowAlign
+from prompt_toolkit.layout import Layout, HSplit, Window, WindowAlign
 from prompt_toolkit.widgets import HorizontalLine, TextArea
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import FormattedText
@@ -21,14 +21,11 @@ def run_main_tui(app_state: AppState) -> int:
     
     # --- UI Components ---
     
-    # 1. Status Bar
     def get_status_text():
-        # Determine color based on state
         c = app_state.connection_status
         color = "bg:ansigreen" if c == "Connected" else "bg:ansired"
         if "Reconnecting" in c: color = "bg:ansiyellow"
         
-        # Add Trip Status
         trip_status = " [TRIPPED] " if app_state.over_current_tripped else ""
         trip_style = "bg:ansired bold #ffffff" if app_state.over_current_tripped else ""
         
@@ -43,10 +40,8 @@ def run_main_tui(app_state: AppState) -> int:
     
     info_bar = Window(content=FormattedTextControl(get_status_text), height=1)
 
-    # 2. Log Window (TextArea for auto-scroll)
     log_area = TextArea(text="", read_only=True, scrollbar=True, focusable=False)
 
-    # 3. Measurements
     def get_measure_text():
         with app_state.lock:
             v = app_state.latest_voltage
@@ -60,7 +55,6 @@ def run_main_tui(app_state: AppState) -> int:
     
     def get_source_text():
         with app_state.lock:
-            # Use source_voltage (target) if available in State
             v = getattr(app_state, 'source_voltage', 0.0) 
             enabled = getattr(app_state, 'output_enabled', False)
             
@@ -74,30 +68,12 @@ def run_main_tui(app_state: AppState) -> int:
         ])
     
     readout = Window(content=FormattedTextControl(get_measure_text), height=1, style='bg:#ansiwhite #000000', align=WindowAlign("LEFT"))
-    source = Window(content=FormattedTextControl(get_source_text), height=1, style='bg:#ansiwhite #000000', align=WindowAlign("LEFT"))
-
-    # 4. Input
+    
     def on_enter(buff):
         process_command(buff.document.text, app_state, lambda: app.exit(EXIT_USER_QUIT))
-        return False # Keep focus
+        return False 
         
     input_field = TextArea(height=1, prompt="> ", multiline=False, accept_handler=on_enter)
-
-    vertical_bar = Window(
-        content=FormattedTextControl(FormattedText([
-            ('bg:#ansiwhite #000000', '|'),
-        ])),
-        height=1,
-        width=1,
-        style = 'bg:#ansiwhite #000000',
-        align= WindowAlign("CENTER")
-    )
-
-    # readout_source_values_container = VSplit([
-    #     readout,
-    #     vertical_bar,
-    #     source
-    # ])
 
     # --- Layout ---
     root = HSplit([
@@ -105,7 +81,6 @@ def run_main_tui(app_state: AppState) -> int:
         HorizontalLine(),
         log_area,
         HorizontalLine(),
-        # readout_source_values_container,
         readout,
         HorizontalLine(),
         input_field
@@ -119,18 +94,17 @@ def run_main_tui(app_state: AppState) -> int:
 
     app = Application(layout=Layout(root, focused_element=input_field), key_bindings=kb, full_screen=True, mouse_support=True)
 
-    # --- Background Updater Thread (OPTIMIZED) ---
+    # --- Background Worker ---
     def worker():
         last_log_count = 0
         
         def sync_logs_to_tui():
             nonlocal last_log_count
-            # 1. LOG OPTIMIZATION: Only rebuild string if new logs arrived
-            # This significantly reduces CPU usage by skipping string ops on idle frames
             current_log_count = 0
             with app_state.lock:
                 current_log_count = len(app_state.command_log)
             
+            # Optimization: Only rebuild string if new logs arrived
             if current_log_count != last_log_count:
                 with app_state.lock:
                     logs = list(app_state.command_log)
@@ -138,13 +112,12 @@ def run_main_tui(app_state: AppState) -> int:
 
                 if log_area.text != new_text:
                     log_area.text = new_text
-                    log_area.buffer.cursor_position = len(new_text) # Auto-scroll
+                    log_area.buffer.cursor_position = len(new_text)
                 
                 last_log_count = current_log_count
                 return True
             return False
 
-            # 2. HARDWARE POLLING
         while app_state.running:
             needs_redraw = False
 
@@ -152,30 +125,19 @@ def run_main_tui(app_state: AppState) -> int:
             
             if app_state.smu:
                 try:
-                    # These calls are now non-blocking on the hardware side (if using new Pico FW)
-                    # But the serial read still takes a few ms.
+                    # Non-blocking measurements
                     v = app_state.smu.measure_voltage()
                     i = app_state.smu.measure_current()
 
-                    # app_state.log_message_to_state_history(f'{v}, {i}')
-                    
-                    # Update state
                     with app_state.lock:
                         app_state.latest_voltage = v
                         app_state.latest_current = i
                         app_state.connection_status = "Connected"
-                        
-                        # Update new fields if available via commands (optional enhancement)
-                        # e.g. status = app_state.smu.get_status()
                     
-                    # Force redraw for readouts
                     needs_redraw = True
                     
                 except Exception as e:
-                    # print(e)
-                    # 3. NON-BLOCKING RECONNECT LOGIC
                     app_state.log_message_to_state_history(f"Disconnected, disabling output!!")
-                    # app_state.smu.set_output(False)
                     app_state.log_message_to_state_history(f"Disconnect: {e}")
                     with app_state.lock: app_state.connection_status = "Reconnecting..."
 
@@ -186,38 +148,33 @@ def run_main_tui(app_state: AppState) -> int:
                     backoff = 0.5
                     max_attempts = 5
                     
-                    # UI Thread handles the loop, keeping app responsive
+                    # Connection retry loop
                     for attempt in range(1, max_attempts + 1):
                         if not app_state.running: break
                         
                         try:
-                            # Driver.connect() is single-shot now\
                             app_state.smu.connect()
                             app_state.smu.set_output(False)
                             reconnected = True
                             app_state.log_message_to_state_history("Reconnected!")
                             sync_logs_to_tui()
                             break
-                        except Exception as retry_err:
-                            # Sleep in small chunks to allow clean exit during backoff
+                        except Exception:
+                            # Gradual backoff
                             sleep_accum = 0
                             while sleep_accum < backoff:
                                 if not app_state.running: break
                                 time.sleep(0.1)
                                 sleep_accum += 0.1
-                            
                             backoff = min(backoff * 1.5, 3.0)
 
                     if not reconnected:
-                        # Only exit if user didn't quit manually
                         if app_state.running:
                             app.exit(EXIT_CRITICAL_DISCONNECT)
                         return
 
-            # CPU Control: 10Hz Refresh
-            # Decreasing this to 0.2 (5Hz) drops CPU usage further if needed
+            # Refresh rate ~10Hz
             if needs_redraw: app.invalidate()
-
             time.sleep(0.1)
 
     t = threading.Thread(target=worker, daemon=True)

@@ -1,4 +1,5 @@
 import threading
+import datetime
 from dataclasses import dataclass, field
 from typing import Optional, List, TYPE_CHECKING
 
@@ -24,7 +25,7 @@ class AppState:
     latest_current: float = 0.0
     connection_status: str = "Disconnected"
     
-    # System Status (New fields for Pico firmware)
+    # System Status
     output_enabled: bool = False
     over_current_tripped: bool = False
     voltage_limit: float = 0.0
@@ -35,10 +36,10 @@ class AppState:
     
     def log_message_to_state_history(self, message: str):
         """Thread-safe logging to the UI buffer."""
-        import datetime
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         with self.lock:
             for line in str(message).splitlines():
                 self.command_log.append(f"[{timestamp}] {line}")
+            # Keep buffer size manageable
             if len(self.command_log) > 200:
                 self.command_log = self.command_log[-195:]

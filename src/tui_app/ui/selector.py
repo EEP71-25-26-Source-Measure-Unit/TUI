@@ -14,7 +14,7 @@ class DynamicPortSelector:
         self.cancelled = False
         self.scanning = True
         
-        # FIX: Initialize with a placeholder value to prevent AssertionError
+        # Initialize with placeholder
         self.radio_list = RadioList(values=[('scanning', 'Scanning for devices...')])
         self.label = Label(text="Scanning...")
 
@@ -48,7 +48,6 @@ class DynamicPortSelector:
 
     def _accept(self):
         val = self.radio_list.current_value
-        # Prevent selecting the placeholder
         if val == 'scanning' or val == 'none':
             return 
 
@@ -68,14 +67,12 @@ class DynamicPortSelector:
                 raw = list_ports.comports()
                 
                 if not raw:
-                    # Provide a placeholder if no ports found
                     new_vals = [('none', 'No devices found. Plug in SMU...')]
                     label_text = "No devices found."
                 else:
                     new_vals = [(p.device, f"{p.device}: {p.description}") for p in raw]
                     label_text = "Select Device:"
 
-                # Update only if changed
                 if new_vals == last_ports: continue
                 self.radio_list.values = new_vals
                 
@@ -86,8 +83,8 @@ class DynamicPortSelector:
                 self.label.text = label_text
                 last_ports = new_vals
                 self.app.invalidate()
-            except Exception as e: 
-                print(e) # actually log this somewhere
+            except Exception: 
+                pass
             time.sleep(0.5)
 
     def run(self):

@@ -43,7 +43,7 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
     try:
         if cmd in ("exit", "quit", "q"):
             app_state.running = False
-            if ui_exiter: ui_exiter() # Call the UI exit callback
+            if ui_exiter: ui_exiter() 
             
         elif cmd in ("help", "h", "?"):
             app_state.log_message_to_state_history(HELP_TEXT)
@@ -95,7 +95,6 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
             app_state.log_message_to_state_history(f"Zeroed")
             
         else:
-            # app_state.log_message_to_state_history(f"Unknown command: '{cmd}' \nType 'help' for a list of available commands.")
             app_state.log_message_to_state_history(f"{UNKNOWN_COMMAND_MESSAGE} '{cmd}'")
             app_state.log_message_to_state_history(UNKNOWN_COMMAND_HELP_MESSAGE)
 

@@ -2,9 +2,8 @@ import sys
 import argparse
 import atexit
 import time
-import threading # <--- Ensure this is imported
+import threading 
 
-# Add these prompt_toolkit imports:
 from prompt_toolkit.application import Application
 from prompt_toolkit.layout import Layout
 from prompt_toolkit.widgets import Dialog, Label
@@ -28,12 +27,11 @@ def show_disconnect_alert(port_name: str):
             style="bold"
         ),
         width=60,
-        buttons=[] # No buttons, it auto-closes
+        buttons=[] 
     )
 
-    # Style it RED to indicate an error
     style = Style.from_dict({
-        'dialog': 'bg:#880000 #ffffff',        # Dark red background, white text
+        'dialog': 'bg:#880000 #ffffff',        
         'dialog.body': 'bg:#880000 #ffffff',
         'frame.label': '#ffffff bold',
         'shadow': 'bg:#000000',
@@ -50,17 +48,13 @@ def show_disconnect_alert(port_name: str):
         time.sleep(4)
         app.exit()
 
-    # Run the timer in a background thread so the UI renders
     t = threading.Thread(target=close_timer, daemon=True)
     t.start()
     
     app.run()
 
 def main():
-    # 1. Setup State
     state = AppState()
-    
-    # 2. Setup Logger
     logger = SMULogger(smu=None)
     state.logger = logger
 
@@ -71,15 +65,13 @@ def main():
 
     atexit.register(cleanup)
 
-    # 3. Parse Args
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="Pre-select port")
     args = parser.parse_args()
     pre_port = args.port
 
-    # 4. Main Application Loop
+    # Main Application Loop
     while True:
-        # --- Connection Phase ---
         port = pre_port
         if not port:
             title = "SMU SELECT" if state.connection_status == "Disconnected" else "RECONNECT SMU"
@@ -91,7 +83,6 @@ def main():
 
         try:
             print(f"Initializing {port}...")
-            # Ensure previous instance is closed
             if state.smu: state.smu.disconnect()
             
             state.smu = SMU(port=port)
@@ -104,26 +95,18 @@ def main():
             time.sleep(2)
             continue
 
-        # --- TUI Phase ---
         state.running = True
         
         # This blocks until the user quits OR the SMU disconnects
         exit_code = run_main_tui(state)
 
         if exit_code != EXIT_CRITICAL_DISCONNECT:
-            break # User quit normally
+            break 
         
-        # --- CRITICAL DISCONNECT HANDLING ---
-        # 1. Update status
         state.connection_status = "Disconnected"
         
-        # 2. Show the Pop-up Alert (New Code)
-        # Use the port name from state, or 'Unknown' if unavailable
         current_port = state.smu.port if state.smu else "Unknown"
         show_disconnect_alert(current_port)
-        
-        # 3. Loop restarts, sending user back to DynamicPortSelector...
-        # time.sleep(0.01)
 
 if __name__ == "__main__":
     main()
