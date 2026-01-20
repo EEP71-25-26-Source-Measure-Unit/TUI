@@ -123,6 +123,7 @@ def main():
         show_disconnect_alert(current_port)
         
         # 3. Loop restarts, sending user back to DynamicPortSelector...
+        # time.sleep(0.01)
 
 if __name__ == "__main__":
     main()

@@ -3,8 +3,9 @@ from .state import AppState
 
 HELP_TEXT = """
 logdata [on|off]        Enable/Disable CSV logging
-vlimit [V]              Set voltage (e.g.: vlimit 5.0)
-climit [mA]             Set current (e.g.: climit 75)
+output  [on|off]        Enable/Disable SMU output
+vlimit  [V]             Set voltage (e.g.: vlimit 5.0)
+climit  [mA]            Set current (e.g.: climit 75)
 mode?                   Get limits
 
 clear, cls              Clear the terminal screen
@@ -57,6 +58,12 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
                 app_state.smu.set_voltage(float(args[1]))
                 app_state.log_message_to_state_history(f"Set Voltage: {args[1]} V")
 
+        elif cmd == "setv":
+            if len(args) != 2: app_state.log_message_to_state_history("Usage: setv <voltage>")
+            else:
+                app_state.smu.set_voltage(float(args[1]))
+                app_state.log_message_to_state_history(f"Set Voltage: {args[1]} V")
+
         elif cmd == "climit":
             if len(args) != 2: app_state.log_message_to_state_history("Usage: climit <current>")
             else:
@@ -70,10 +77,22 @@ def process_command(cmd_str: str, app_state: AppState, ui_exiter=None):
             elif args[1].lower() == "off":
                 if app_state.logger: app_state.logger.stop_data_logging()
 
+        elif cmd == "output":
+            if len(args) != 2 or args[1].lower() not in ["on", "off"]:
+                app_state.log_message_to_state_history("Wrong command usage. Usage: output <on|off>")
+                return
+            elif args[1].lower() == "on": app_state.smu.set_output(True)
+            elif args[1].lower() == "off": app_state.smu.set_output(False)
+            app_state.log_message_to_state_history(f"Output changed to {args[1].lower() }")
+
         elif cmd == "mode?":
             v_lim = app_state.smu.voltage_limit()
             i_lim = app_state.smu.current_limit()
             app_state.log_message_to_state_history(f"Limits -> {v_lim} V, {i_lim} mA")
+
+        elif cmd == "zero":
+            app_state.smu.zero_tare()
+            app_state.log_message_to_state_history(f"Zeroed")
             
         else:
             # app_state.log_message_to_state_history(f"Unknown command: '{cmd}' \nType 'help' for a list of available commands.")

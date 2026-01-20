@@ -1,9 +1,7 @@
 import threading
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 
-# Use TYPE_CHECKING to avoid circular imports at runtime
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from smulib.smu import SMU
     from smulib.logging import SMULogger
@@ -12,7 +10,6 @@ if TYPE_CHECKING:
 class AppState:
     """
     Central shared state for the application.
-    Replaces global variables for thread-safety and modularity.
     """
     # Hardware & Logging
     smu: Optional['SMU'] = None
@@ -22,10 +19,16 @@ class AppState:
     lock: threading.Lock = field(default_factory=threading.Lock)
     running: bool = True
     
-    # Measurement Data (Shared between Thread and UI)
+    # Measurement Data
     latest_voltage: float = 0.0
     latest_current: float = 0.0
-    connection_status: str = "Disconnected" # Disconnected, Reconnecting, Connected
+    connection_status: str = "Disconnected"
+    
+    # System Status (New fields for Pico firmware)
+    output_enabled: bool = False
+    over_current_tripped: bool = False
+    voltage_limit: float = 0.0
+    current_limit: float = 0.0
     
     # UI Buffers
     command_log: List[str] = field(default_factory=list)
@@ -38,4 +41,4 @@ class AppState:
             for line in str(message).splitlines():
                 self.command_log.append(f"[{timestamp}] {line}")
             if len(self.command_log) > 200:
-                self.command_log = self.command_log[-200:]
+                self.command_log = self.command_log[-195:]
